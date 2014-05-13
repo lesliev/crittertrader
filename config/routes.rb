@@ -1,5 +1,12 @@
 Critterserv::Application.routes.draw do
-  get "token/show"
+
+  resources :tokens, only: [] do
+    collection do
+      get :show
+      post :create
+    end
+  end
+
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
