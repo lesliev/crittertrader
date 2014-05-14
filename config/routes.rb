@@ -1,11 +1,7 @@
-Critterserv::Application.routes.draw do
+Crittertrader::Application.routes.draw do
 
-  resources :tokens, only: [] do
-    collection do
-      get :show
-      post :create
-    end
-  end
+  resources :tokens, only: [:index]
+  resources :critters, only: [:index, :show, :create]
 
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".

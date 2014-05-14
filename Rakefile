@@ -3,4 +3,4 @@
 
 require File.expand_path('../config/application', __FILE__)
 
-Critterserv::Application.load_tasks
+Crittertrader::Application.load_tasks
