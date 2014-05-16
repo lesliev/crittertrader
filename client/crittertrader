@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+
+class CritterFile
+  def initialize(critter_file)
+    @critter_file = critter_file
+  end
+
+  def basename
+    File.basename(@critter_file)
+  end
+end
+
+class CritterTrader
+  def initialize(dir = "#{ENV['HOME']}/.critterding/save/exchange")
+    @dir = dir
+    @target_dir = 'exchange'
+    @sleep_time
+    @done = {}
+  end
+
+  def cycle
+    loop do
+      sleep(@sleep_time)
+      #etc
+    end
+  end
+
+  def extract_local
+    files = Dir.glob(File.join(@dir, '*cr*'))
+
+    fullbase = {}
+    files.each do |f|
+      fullbase[File.basename(f)] = f
+    end
+
+    todo = fullbase.keys - @done.values
+
+    todo.each do |f|
+      fullname = fullbase[f]
+      targetname = File.join(@target_dir, f)
+      unzipped = targetname.gsub(/\.bz2$/, '')
+
+      `cp '#{fullname}' '#{@target_dir}'`
+      `bunzip2 '#{targetname}'`
+
+      md5 = `md5sum '#{unzipped}'`
+      md5 = md5.split.first
+
+      hashname = File.join(@target_dir, md5)
+      print "  done: #{f} -> #{md5} "
+
+      if File.exist?(hashname)
+        `rm '#{unzipped}'`
+        puts "[already extracted]"
+      else
+        `mv '#{unzipped}' '#{hashname}'`
+        puts "[new]"
+      end
+
+      @done[md5] = f
+    end
+  end
+end
+
+if __FILE__ == $0
+  c = CritterTrader.new
+  c.extract_local
+end
+
