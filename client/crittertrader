@@ -1,28 +1,16 @@
 #!/usr/bin/env ruby
 
-class CritterFile
-  def initialize(critter_file)
-    @critter_file = critter_file
-  end
+require 'faraday'
+require 'json'
 
-  def basename
-    File.basename(@critter_file)
-  end
-end
+class CritterHasher
+  attr_reader :done
 
-class CritterTrader
   def initialize(dir = "#{ENV['HOME']}/.critterding/save/exchange")
     @dir = dir
     @target_dir = 'exchange'
     @sleep_time
     @done = {}
-  end
-
-  def cycle
-    loop do
-      sleep(@sleep_time)
-      #etc
-    end
   end
 
   def extract_local
@@ -59,11 +47,139 @@ class CritterTrader
 
       @done[md5] = f
     end
+    @done
+  end
+end
+
+class CritterServer
+  def initialize(host)
+    @host = host
+    @conn = Faraday.new(url: @host)
+  end
+
+  def get(path)
+    @conn.get(path) do |req|
+      req['Content-Type'] = 'application/json'
+    end
+  end
+
+  def post(path, body)
+    @conn.post(path) do |req|
+      req['Content-Type'] = 'application/json'
+      req.body = body
+    end
+  end
+
+  def critters_get_all
+    response = get('/critters')
+    JSON.parse(response.body)['critters']
+  end
+
+  def critters_get(hash)
+    response = get("/critters/#{hash}")
+    JSON.parse(response.body)['critter']['data']
+  end
+
+  def tokens_get
+    response = get('/tokens')
+    JSON.parse(response.body)['critter']['token']
+  end
+
+  def critters_post(file, token)
+    data = File.read(file)
+    body = {'critter' => {'token' => token, 'data' => data}}.to_json
+    response = post('/critters', body)
+    JSON.parse(response.body)
+  end
+end
+
+class CritterUploader
+  attr_reader :local_critters, :server_critters
+  def initialize(critter_server, dir = "exchange")
+    @cs = critter_server
+    @dir = dir
+  end
+
+  def upload(file)
+    puts "Uploading #{file}"
+    token = @cs.tokens_get
+    @cs.critters_post(file, token)
+  end
+
+  def upload_any
+    @server_critters = @cs.critters_get_all
+    @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
+
+    candidates = @local_critters - @server_critters
+    if candidates.any?
+      file = candidates[rand(candidates.length)]
+      upload(File.join(@dir, file))
+    else
+      {errors: ['All local critters on server']}
+    end
+  end
+end
+
+class CritterDownloader
+  def initialize(critter_server, dir = "exchange")
+    @cs = critter_server
+    @dir = dir
+  end
+
+  def download_any
+    @server_critters = @cs.critters_get_all
+    @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
+
+    candidates = @server_critters - @local_critters
+    if candidates.any?
+      hash = candidates[rand(candidates.length)]
+      file = File.join(@dir, hash)
+      puts "Downloading #{file}"
+      data = @cs.critters_get(hash)
+      File.open(file, 'w'){|f| f.write(data)}
+    else
+      {errors: ['All server critters on local']}
+    end
+  end
+
+end
+
+class CritterTrader
+  def initialize(critter_server)
+    @ch = CritterHasher.new
+    @cu = CritterUploader.new(critter_server)
+    @cd = CritterDownloader.new(critter_server)
+  end
+
+  def run
+    @ch.extract_local
+
+    response = @cu.upload_any
+    puts response[:errors] if response[:errors]
+
+    response = @cd.download_any
+    puts response[:errors] if response[:errors]
+
+    #TODO: copy downloaded files to critterding directory
+  end
+
+  def run_forever
+    loop do
+      puts
+      run
+
+      # Sleep 10 minutes
+      # PLEASE DON'T CHANGE THIS PEOPLE! I don't want the server to die.
+      # In future we could probably tweak it, once I've optimised the server.
+      puts "#{Time.now}: sleeping 10 minutes..."
+      sleep(600)
+    end
   end
 end
 
 if __FILE__ == $0
-  c = CritterTrader.new
-  c.extract_local
+  cs = CritterServer.new('http://localhost:3000')
+  ct = CritterTrader.new(cs)
+  ct.run_forever
 end
 

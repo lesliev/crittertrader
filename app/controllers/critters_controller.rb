@@ -25,13 +25,19 @@ class CrittersController < ApplicationController
       if critter.data
         render json: {errors: ['Critter data already exists']}, status: :conflict
       else
-        critter.data_hash = generate_hash(data)
-        critter.data = data
-
-        if critter.save
-          render json: {critter: {data_hash: critter.data_hash, token: critter.token}}
+        data_hash = generate_hash(data)
+        if Critter.where(data_hash: data_hash).any?
+          Critter.where(token: token).delete_all
+          render json: {errors: ['Critter data already exists']}, status: :conflict
         else
-          render json: {errors: critter.errors.messages}
+          critter.data_hash = data_hash
+          critter.data = data
+
+          if critter.save
+            render json: {critter: {data_hash: critter.data_hash, token: critter.token}}
+          else
+            render json: {errors: critter.errors.messages}
+          end
         end
       end
     else
