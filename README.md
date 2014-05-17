@@ -15,6 +15,18 @@ Crittertrader has a server program so you can run a server if you like, or use t
 which should be live and swapping critters right now. To run a server, see the server project
 here: https://github.com/lesliev/crittertrader
 
+Dependencies
+------------
+I've only tried running the client on (Ubuntu) Linux - but it doesn't have too many dependencies -
+basically only the Faraday gem. If you have Ruby (probably > 1.9.3) and can install bundler, 
+you should be able to get up and running fairly easily with the commands below.
+
+The client does use quite a few command line programs though:
+bzip2, bunzip2, md5sum, rm, mv
+
+You'll need git and gem to install.
+
+
 Running the client
 ------------------
 
@@ -60,5 +72,4 @@ Then make sure you always start critterding with that configuration file:
 ```
 critterding --profile <profile-file>
 ```
-
 
