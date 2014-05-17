@@ -3,6 +3,8 @@
 require 'faraday'
 require 'json'
 
+require './crittertrader_config.rb'
+
 # Copies critters to a local directory, extracts them,
 # renames them to a hash of their contents
 class CritterHasher
@@ -243,7 +245,8 @@ class CritterTrader
 end
 
 if __FILE__ == $0
-  cs = CritterServer.new('http://localhost:3000')
+  config = CrittertraderConfig
+  cs = CritterServer.new(config.host)
   ct = CritterTrader.new(cs)
   ct.run_forever
 end
