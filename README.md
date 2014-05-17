@@ -13,7 +13,7 @@ critters.
 
 Crittertrader has a server program so you can run a server if you like, or use the default server
 which should be live and swapping critters right now. To run a server, see the server project
-here: https://github.com/lesliev/crittertrader
+here: https://github.com/lesliev/crittertrader-server
 
 Dependencies
 ------------
