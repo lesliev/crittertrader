@@ -21,6 +21,12 @@ RSpec.configure do |config|
   # config.mock_with :flexmock
   # config.mock_with :rr
 
+  # allow using focus: true to isolate certain tests
+  # see http://blog.davidchelimsky.net/2010/06/14/filtering-examples-in-rspec-2/
+  config.filter_run focus: true
+  config.run_all_when_everything_filtered = true
+  config.filter_run_excluding :slow => true
+
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_path = "#{::Rails.root}/spec/fixtures"
 

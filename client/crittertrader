@@ -3,6 +3,8 @@
 require 'faraday'
 require 'json'
 
+# Copies critters to a local directory, extracts them,
+# renames them to a hash of their contents
 class CritterHasher
   attr_reader :done
 
@@ -13,19 +15,24 @@ class CritterHasher
     @done = {}
   end
 
+  def fulltarget(f)
+    File.join(@target_dir, f)
+  end
+
   def extract_local
     files = Dir.glob(File.join(@dir, '*cr*'))
+    files.delete_if{|f| f =~ /^server/}
 
     fullbase = {}
     files.each do |f|
       fullbase[File.basename(f)] = f
     end
 
+    puts "Extracting.."
     todo = fullbase.keys - @done.values
-
     todo.each do |f|
       fullname = fullbase[f]
-      targetname = File.join(@target_dir, f)
+      targetname = fulltarget(f)
       unzipped = targetname.gsub(/\.bz2$/, '')
 
       `cp '#{fullname}' '#{@target_dir}'`
@@ -35,7 +42,7 @@ class CritterHasher
       md5 = md5.split.first
 
       hashname = File.join(@target_dir, md5)
-      print "  done: #{f} -> #{md5} "
+      print "  #{f} -> #{md5} "
 
       if File.exist?(hashname)
         `rm '#{unzipped}'`
@@ -48,6 +55,27 @@ class CritterHasher
       @done[md5] = f
     end
     @done
+  end
+
+  def copy_back(files)
+    puts "\nCopying back..."
+    files.each do |f|
+      critterfile = fulltarget(f)
+      backfile = File.join(@dir, "server-#{f}.cr.bz2")
+
+      print "  #{critterfile} "
+      if @done[f]
+        puts "[from local]"
+      else
+        if File.exist?(backfile)
+          puts "[already exists]"
+        else
+          `bzip2 -c '#{critterfile}' > '#{backfile}'`
+          @done[f] = critterfile
+          puts " -> #{backfile}"
+        end
+      end
+    end
   end
 end
 
@@ -101,12 +129,12 @@ class CritterUploader
   end
 
   def upload(file)
-    puts "Uploading #{file}"
     token = @cs.tokens_get
     @cs.critters_post(file, token)
   end
 
   def upload_any
+    @uploaded = []
     @server_critters = @cs.critters_get_all
     @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
 
@@ -114,9 +142,24 @@ class CritterUploader
     if candidates.any?
       file = candidates[rand(candidates.length)]
       upload(File.join(@dir, file))
-    else
-      {errors: ['All local critters on server']}
+      @uploaded << file
     end
+
+    @uploaded
+  end
+
+  def upload_all
+    @uploaded = []
+    @server_critters = @cs.critters_get_all
+    @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
+
+    candidates = @local_critters - @server_critters
+    candidates.each do |file|
+      upload(File.join(@dir, file))
+      @uploaded << file
+    end
+
+    @uploaded
   end
 end
 
@@ -124,22 +167,42 @@ class CritterDownloader
   def initialize(critter_server, dir = "exchange")
     @cs = critter_server
     @dir = dir
+    @downloaded = []
+  end
+
+  def download(hash)
+    file = File.join(@dir, hash)
+    puts "Downloading #{file}"
+    data = @cs.critters_get(hash)
+    File.open(file, 'w'){|f| f.write(data)}
+    @downloaded << hash
   end
 
   def download_any
+    @downloaded = []
     @server_critters = @cs.critters_get_all
     @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
 
     candidates = @server_critters - @local_critters
     if candidates.any?
       hash = candidates[rand(candidates.length)]
-      file = File.join(@dir, hash)
-      puts "Downloading #{file}"
-      data = @cs.critters_get(hash)
-      File.open(file, 'w'){|f| f.write(data)}
-    else
-      {errors: ['All server critters on local']}
+      download(hash)
     end
+
+    @downloaded
+  end
+
+  def download_all
+    @downloaded = []
+    @server_critters = @cs.critters_get_all
+    @local_critters = Dir.glob(File.join(@dir, '*')).map{|f| File.basename(f)}
+
+    candidates = @server_critters - @local_critters
+    candidates.each do |hash|
+      download(hash)
+    end
+
+    @downloaded
   end
 
 end
@@ -154,13 +217,15 @@ class CritterTrader
   def run
     @ch.extract_local
 
-    response = @cu.upload_any
-    puts response[:errors] if response[:errors]
+    uploaded = @cu.upload_any
+    puts uploaded.map{|f| "Uploaded #{f}"}.join("\n")
+    puts "All local files uploaded" if !uploaded.any?
 
-    response = @cd.download_any
-    puts response[:errors] if response[:errors]
+    downloaded = @cd.download_any
+    puts downloaded.map{|f| "Downloaded #{f}"}.join("\n")
+    puts "All server files downloaded" if !downloaded.any?
 
-    #TODO: copy downloaded files to critterding directory
+    @ch.copy_back(downloaded)
   end
 
   def run_forever

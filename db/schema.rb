@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140513100346) do
+ActiveRecord::Schema.define(version: 20140517173249) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -22,6 +22,8 @@ ActiveRecord::Schema.define(version: 20140513100346) do
     t.text     "data"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.string   "critterding_version"
+    t.string   "environment_hash"
   end
 
   add_index "critters", ["data_hash"], name: "index_critters_on_data_hash", unique: true, using: :btree

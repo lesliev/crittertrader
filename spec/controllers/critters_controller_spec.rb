@@ -1,6 +1,10 @@
 require 'spec_helper'
 
 describe CrittersController do
+  before :each do
+    Critter.any_instance.stub(:critter_data_is_valid).and_return(true)
+  end
+
   it 'creates a critter when passing token and data' do
     token = 'iamatokenshortandstout'
     Critter.create(token: token)
