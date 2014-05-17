@@ -1,4 +1,5 @@
 GEM
+  remote: https://rubygems.org/
   specs:
     faraday (0.8.9)
       multipart-post (~> 1.2.0)
