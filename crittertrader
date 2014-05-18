@@ -102,7 +102,7 @@ class CritterServer
 
   def critters_get_all
     response = get('/critters')
-    JSON.parse(response.body)['critters']
+    JSON.parse(response.body)['critters'].compact
   end
 
   def critters_get(hash)
@@ -223,7 +223,7 @@ class CritterTrader
     puts uploaded.map{|f| "Uploaded #{f}"}.join("\n")
     puts "All local files uploaded" if !uploaded.any?
 
-    downloaded = @cd.download_any
+    downloaded = @cd.download_all
     puts downloaded.map{|f| "Downloaded #{f}"}.join("\n")
     puts "All server files downloaded" if !downloaded.any?
 
